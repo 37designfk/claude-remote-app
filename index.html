@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Remote Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #d4a574, #e8c9a0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #4caf50;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(76,175,80,0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 8px rgba(76,175,80,0); }
+    }
+
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .feature-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 18px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:active::before,
+    .feature-card.active::before { opacity: 1; }
+
+    .feature-card:active,
+    .feature-card.active {
+      background: rgba(255,255,255,0.08);
+      transform: scale(0.98);
+    }
+
+    .feature-icon { font-size: 28px; margin-bottom: 8px; }
+    .feature-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .feature-desc { font-size: 12px; color: #999; line-height: 1.5; }
+
+    .feature-card:nth-child(1) { --accent: #d4a574; }
+    .feature-card:nth-child(2) { --accent: #74b4d4; }
+    .feature-card:nth-child(3) { --accent: #d474a5; }
+    .feature-card:nth-child(4) { --accent: #74d4a5; }
+    .feature-card:nth-child(5) { --accent: #a574d4; }
+
+    .demo-area {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      min-height: 200px;
+      transition: all 0.3s;
+    }
+
+    .demo-title {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .terminal {
+      background: #111118;
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+
+    .terminal .prompt { color: #d4a574; }
+    .terminal .cmd { color: #e0e0e0; }
+    .terminal .output { color: #888; }
+    .terminal .success { color: #4caf50; }
+    .terminal .info { color: #74b4d4; }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: #d4a574;
+      animation: blink 1s step-end infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .connection-viz {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+    }
+
+    .device {
+      text-align: center;
+      font-size: 11px;
+      color: #999;
+    }
+
+    .device-icon { font-size: 36px; margin-bottom: 4px; }
+
+    .connection-line {
+      flex: 1;
+      height: 2px;
+      max-width: 60px;
+      background: linear-gradient(90deg, #d4a574, #74b4d4);
+      position: relative;
+      border-radius: 1px;
+    }
+
+    .connection-line::after {
+      content: '';
+      position: absolute;
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      top: -2px;
+      animation: travel 1.5s linear infinite;
+    }
+
+    @keyframes travel {
+      0% { left: 0; opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { left: calc(100% - 6px); opacity: 0; }
+    }
+
+    .time-display {
+      text-align: center;
+      font-size: 11px;
+      color: #666;
+      margin-top: 20px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .badge-new { background: rgba(212,165,116,0.2); color: #d4a574; }
+    .badge-preview { background: rgba(116,180,212,0.2); color: #74b4d4; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">&#x1F4BB;</div>
+      <h1>Claude Code Remote</h1>
+      <p class="subtitle">iOSからリモート操作中</p>
+    </header>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span>セッション接続中 &mdash; iOS App</span>
+    </div>
+
+    <div class="features" id="features">
+      <div class="feature-card" data-demo="remote-control">
+        <div class="feature-icon">&#x1F4F1;</div>
+        <div class="feature-title">Remote Control <span class="badge badge-new">NEW</span></div>
+        <div class="feature-desc">スマホからローカルのClaude Codeを操作。コードはローカルに残るから安全。</div>
+      </div>
+
+      <div class="feature-card" data-demo="web">
+        <div class="feature-icon">&#x2601;&#xFE0F;</div>
+        <div class="feature-title">Cloud Execution</div>
+        <div class="feature-desc">Anthropicクラウドで非同期実行。マシンがオフでもタスクが動く。</div>
+      </div>
+
+      <div class="feature-card" data-demo="schedule">
+        <div class="feature-icon">&#x23F0;</div>
+        <div class="feature-title">Scheduled Tasks <span class="badge badge-preview">PREVIEW</span></div>
+        <div class="feature-desc">定期実行でPRレビューやCI監視を自動化。毎日・毎週など自由に設定。</div>
+      </div>
+
+      <div class="feature-card" data-demo="teleport">
+        <div class="feature-icon">&#x1F680;</div>
+        <div class="feature-title">Teleport</div>
+        <div class="feature-desc">Web &#x2194; ターミナル間でセッションを瞬時に移動。</div>
+      </div>
+
+      <div class="feature-card" data-demo="channels">
+        <div class="feature-icon">&#x1F4AC;</div>
+        <div class="feature-title">Channels <span class="badge badge-preview">PREVIEW</span></div>
+        <div class="feature-desc">Slack・Discord・TelegramからClaude Codeにタスクを送信。</div>
+      </div>
+    </div>
+
+    <div class="demo-area" id="demoArea">
+      <div class="demo-title">&#x25B6; カードをタップしてデモを見る</div>
+      <div class="connection-viz">
+        <div class="device">
+          <div class="device-icon">&#x1F4F1;</div>
+          iOS
+        </div>
+        <div class="connection-line"></div>
+        <div class="device">
+          <div class="device-icon">&#x2601;&#xFE0F;</div>
+          Cloud
+        </div>
+        <div class="connection-line"></div>
+        <div class="device">
+          <div class="device-icon">&#x1F5A5;&#xFE0F;</div>
+          Local
+        </div>
+      </div>
+    </div>
+
+    <div class="time-display" id="timeDisplay"></div>
+  </div>
+
+  <script>
+    const demos = {
+      'remote-control': {
+        title: 'Remote Control Demo',
+        lines: [
+          { type: 'prompt', text: '$ ' },
+          { type: 'cmd', text: 'claude remote-control' },
+          { type: 'output', text: '' },
+          { type: 'success', text: '&#x2713; Remote Control server started' },
+          { type: 'info', text: '&#x1F517; Session URL: https://claude.ai/code/s/abc123' },
+          { type: 'info', text: '&#x1F4F1; QRコードをスキャンして接続...' },
+          { type: 'output', text: '' },
+          { type: 'success', text: '&#x2713; iOS client connected!' },
+          { type: 'output', text: '  &#x2192; コードはローカルに保持' },
+          { type: 'output', text: '  &#x2192; チャットのみ暗号化して送受信' },
+        ]
+      },
+      'web': {
+        title: 'Cloud Execution Demo',
+        lines: [
+          { type: 'prompt', text: '$ ' },
+          { type: 'cmd', text: 'claude --remote "Fix auth bug in login.ts"' },
+          { type: 'output', text: '' },
+          { type: 'success', text: '&#x2713; Cloud session created' },
+          { type: 'info', text: '&#x1F680; Running on Anthropic infrastructure...' },
+          { type: 'output', text: '  &#x2192; リポジトリをクローン中...' },
+          { type: 'success', text: '  &#x2192; バグを特定: src/auth/login.ts:42' },
+          { type: 'success', text: '  &#x2192; 修正を適用 & テスト通過' },
+          { type: 'info', text: '&#x1F4CB; PR #47 created: "Fix auth token refresh"' },
+        ]
+      },
+      'schedule': {
+        title: 'Scheduled Tasks Demo',
+        lines: [
+          { type: 'prompt', text: '> ' },
+          { type: 'cmd', text: '/schedule' },
+          { type: 'output', text: '' },
+          { type: 'info', text: '&#x23F0; Scheduled Tasks:' },
+          { type: 'output', text: '  1. Daily PR Review    &#x2500; 毎朝 9:00 JST' },
+          { type: 'output', text: '  2. Dep Audit          &#x2500; 毎週月曜 10:00' },
+          { type: 'output', text: '  3. CI Failure Monitor &#x2500; 毎時' },
+          { type: 'output', text: '' },
+          { type: 'success', text: '&#x2713; 全タスク正常稼働中' },
+          { type: 'output', text: '  &#x2192; マシンがオフでもクラウドで実行' },
+        ]
+      },
+      'teleport': {
+        title: 'Teleport Demo',
+        lines: [
+          { type: 'info', text: '&#x1F310; Web session: claude.ai/code' },
+          { type: 'output', text: '  Working on feature branch...' },
+          { type: 'output', text: '' },
+          { type: 'prompt', text: '> ' },
+          { type: 'cmd', text: '/teleport' },
+          { type: 'output', text: '' },
+          { type: 'info', text: '&#x1F4E1; セッションを転送中...' },
+          { type: 'success', text: '&#x2713; ブランチをチェックアウト完了' },
+          { type: 'success', text: '&#x2713; ローカルターミナルで再開!' },
+          { type: 'output', text: '  &#x2192; 会話の文脈もそのまま引き継ぎ' },
+        ]
+      },
+      'channels': {
+        title: 'Channels Demo',
+        lines: [
+          { type: 'info', text: '&#x1F4AC; Slack #engineering:' },
+          { type: 'output', text: '  @Claude: ログインページのCSS崩れ直して' },
+          { type: 'output', text: '' },
+          { type: 'success', text: '&#x2713; Claude Code session started' },
+          { type: 'info', text: '&#x1F50D; コードを分析中...' },
+          { type: 'success', text: '&#x2713; 修正完了: flexbox alignment fix' },
+          { type: 'info', text: '&#x1F4CB; PR作成 → Slackに通知' },
+          { type: 'output', text: '' },
+          { type: 'output', text: '  [View Session] [Create PR] [Retry]' },
+        ]
+      }
+    };
+
+    document.querySelectorAll('.feature-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.feature-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+
+        const demoKey = card.dataset.demo;
+        const demo = demos[demoKey];
+        if (!demo) return;
+
+        const area = document.getElementById('demoArea');
+        area.innerHTML = `<div class="demo-title">${demo.title}</div><div class="terminal" id="termOutput"></div>`;
+
+        const term = document.getElementById('termOutput');
+        let lineIndex = 0;
+
+        function addLine() {
+          if (lineIndex >= demo.lines.length) {
+            term.innerHTML += '<span class="typing-cursor"></span>';
+            return;
+          }
+
+          const line = demo.lines[lineIndex];
+          const el = document.createElement('div');
+          el.innerHTML = `<span class="${line.type}">${line.text}</span>`;
+          term.appendChild(el);
+          lineIndex++;
+
+          const delay = line.type === 'cmd' ? 400 : line.text === '' ? 200 : 300;
+          setTimeout(addLine, delay);
+        }
+
+        addLine();
+      });
+    });
+
+    function updateTime() {
+      const now = new Date();
+      const str = now.toLocaleString('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+      document.getElementById('timeDisplay').textContent = `${str} JST`;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>
